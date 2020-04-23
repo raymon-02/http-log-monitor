@@ -3,4 +3,4 @@ monitor:
     name: /Users/ilia/Documents/Projects/http-log-monitor/src/main/resources/example.txt
   events:
     statistic:
-      interval: 25
+      period: 5
