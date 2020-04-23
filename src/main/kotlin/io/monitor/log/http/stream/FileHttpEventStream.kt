@@ -1,4 +1,4 @@
-package io.monitor.log.http.service
+package io.monitor.log.http.stream
 
 import io.monitor.log.http.common.DefaultArgs.DEFAULT_FILE
 import io.monitor.log.http.model.HttpEvent
@@ -11,29 +11,28 @@ import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import reactor.core.publisher.ReplayProcessor
 import java.io.File
-import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 
 @Service
-class HttpEventService(
+class FileHttpEventStream(
     @Value("\${monitor.log.file.name:$DEFAULT_FILE}")
     private val fileName: String,
     private val httpEventParser: HttpEventParser
-) {
+) : HttpEventStream {
 
     companion object {
-        private val log = LoggerFactory.getLogger(HttpEventService::class.java)
+        private val log = LoggerFactory.getLogger(FileHttpEventStream::class.java)
 
         private const val EVENT_THREAD = "events-thread"
+        private const val EVENTS_HISTORY_REPLAY_SIZE = 10000
     }
 
     @Volatile
-    private var readEvents: Boolean = true
-    private val eventExecutor: ExecutorService = Executors.newSingleThreadExecutor { Thread(it, EVENT_THREAD) }
+    private var readEvents = true
+    private val eventExecutor = Executors.newSingleThreadExecutor { Thread(it, EVENT_THREAD) }
 
-    val events: ReplayProcessor<HttpEvent> = ReplayProcessor.create<HttpEvent>(10)
-
+    override val events: ReplayProcessor<HttpEvent> = ReplayProcessor.create<HttpEvent>(EVENTS_HISTORY_REPLAY_SIZE)
 
     @EventListener(ApplicationStartedEvent::class)
     fun init() {

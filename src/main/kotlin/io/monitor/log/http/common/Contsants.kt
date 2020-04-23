@@ -2,5 +2,5 @@ package io.monitor.log.http.common
 
 object DefaultArgs {
     const val DEFAULT_FILE = "/tmp/access.log"
-    const val DEFAULT_STATISTIC_DURATION = 10
+    const val DEFAULT_STATISTIC_PERIOD = 10
 }

@@ -17,7 +17,7 @@ class HttpEventParser {
         private val EVENT_REGEX =
             "^(\\S+) (\\S+) (\\S+) \\[([\\w:/]+\\s[+\\-]\\d{4})] \"(\\S+) (\\S+) (\\S+)\" (\\d{3}) (\\d+)".toRegex()
         private const val HOST_GROUP = 1
-        private const val REQUEST_GROUP = 7
+        private const val REQUEST_GROUP = 6
         private const val DATETIME_GROUP = 4
     }
 
@@ -26,7 +26,7 @@ class HttpEventParser {
         return if (matchResult != null) {
             HttpEvent(
                 matchResult.groupValues[HOST_GROUP],
-                matchResult.groupValues[REQUEST_GROUP],
+                matchResult.groupValues[REQUEST_GROUP].firstSection(),
                 matchResult.groupValues[DATETIME_GROUP].toLocalDateTime()
             )
         } else {
@@ -41,3 +41,5 @@ private fun String.toLocalDateTime() = LocalDateTime.parse(
     this,
     DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss X")
 )
+
+private fun String.firstSection() = "/${substring(1).substringBefore("/")}"

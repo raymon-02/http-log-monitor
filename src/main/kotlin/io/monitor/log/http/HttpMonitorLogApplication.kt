@@ -16,8 +16,8 @@ class HttpMonitorLogApplication(
     @Value("\${monitor.log.file.name:${DefaultArgs.DEFAULT_FILE}}")
     private val logFileName: String,
 
-    @Value("\${monitor.events.statistic.interval:${DefaultArgs.DEFAULT_STATISTIC_DURATION}}")
-    val interval: Int
+    @Value("\${monitor.events.statistic.period:${DefaultArgs.DEFAULT_STATISTIC_PERIOD}}")
+    val statisticPeriod: Long
 ) {
 
     companion object {
@@ -29,10 +29,10 @@ class HttpMonitorLogApplication(
     ) {
         val args = buildString {
             append("\n")
-            append("Application has been started with args:").append("\n")
-            append("    Log file name      = $logFileName").append("\n")
-            append("    Statistic interval = $interval").append("\n")
-            append("    Alert threshold    = ????????")
+            append("Application is starting with args:").append("\n")
+            append("    Log file name              = $logFileName").append("\n")
+            append("    Statistic period (seconds) = $statisticPeriod").append("\n")
+            append("    Alert threshold (req/sec)  = ????????")
         }
         log.info(args)
     }

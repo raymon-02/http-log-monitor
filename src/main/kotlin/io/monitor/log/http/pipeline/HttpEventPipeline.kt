@@ -1,8 +1,8 @@
 package io.monitor.log.http.pipeline
 
 import io.monitor.log.http.service.AlertService
-import io.monitor.log.http.service.HttpEventService
 import io.monitor.log.http.service.StatisticService
+import io.monitor.log.http.stream.HttpEventStream
 import io.monitor.log.http.util.logWith
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.event.ApplicationStartedEvent
@@ -12,7 +12,7 @@ import reactor.core.scheduler.Schedulers
 
 @Component
 class HttpEventPipeline(
-    private val httpEventService: HttpEventService,
+    private val httpEventStream: HttpEventStream,
     private val statisticService: StatisticService,
     private val alertService: AlertService
 ) {
@@ -25,7 +25,7 @@ class HttpEventPipeline(
 
     @EventListener(ApplicationStartedEvent::class)
     fun pipeline() {
-        val httpEventStream = httpEventService.events
+        val httpEventStream = httpEventStream.events
             .logWith(log)
             .publishOn(Schedulers.newElastic(PIPELINE_THREAD))
 

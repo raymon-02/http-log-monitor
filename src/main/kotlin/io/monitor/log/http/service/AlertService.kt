@@ -24,7 +24,7 @@ class AlertService {
     private val alertThread = Thread({ handleHttpEvents() }, ALERT_THREAD)
 
     private val events: Deque<HttpEvent> = ConcurrentLinkedDeque()
-    private val timeWindow: List<HttpEvent> = LinkedList()
+    private val timeWindow: MutableList<HttpEvent> = LinkedList()
 
 
     @EventListener(ApplicationStartedEvent::class)

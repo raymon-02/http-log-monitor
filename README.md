@@ -10,3 +10,4 @@ HTTP log monitor
   Low-level => no blocking during waiting
 * JMX/REST to stop handle events
 * Log Format: Common Log Format (CLF) (including specifying format of datetime)
+* Not from local file but from http => interface HttpEventService
