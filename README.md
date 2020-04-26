@@ -102,6 +102,7 @@ To override default property values additional arguments can be specified during
 
 
 ### Further possible improvements
+* Statistic history flush to storage
 * JMX/REST API to start/stop/restart event handling
 * API for http event streaming from outside system (via WebSocket)
 * Chart for statistic with alerts visualisation
