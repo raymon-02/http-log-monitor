@@ -108,7 +108,7 @@ class StatisticService(
                 append("  |   host     = ${topHost.host}").append("\n")
                 append("  |   requests = ${topHost.hits}").append("\n")
                 append("  |   sections = [").append("\n")
-                topHost.sections.forEach {
+                topHost.sections.sorted().forEach {
                     append("  |     $it").append("\n")
                 }
                 append("  |   ]")
