@@ -3,7 +3,7 @@ package io.monitor.log.http.parser
 import io.monitor.log.http.model.HttpEvent
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import java.time.LocalDateTime
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 
@@ -27,7 +27,7 @@ class HttpEventParser {
             HttpEvent(
                 matchResult.groupValues[HOST_GROUP],
                 matchResult.groupValues[REQUEST_GROUP].firstSection(),
-                matchResult.groupValues[DATETIME_GROUP].toLocalDateTime()
+                matchResult.groupValues[DATETIME_GROUP].toZoneDateTime()
             )
         } else {
             log.warn("Http event from log line '$content' cannot be parsed")
@@ -37,9 +37,9 @@ class HttpEventParser {
 }
 
 
-private fun String.toLocalDateTime() = LocalDateTime.parse(
+private fun String.toZoneDateTime() = ZonedDateTime.parse(
     this,
-    DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss X")
+    DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss XX")
 )
 
 private fun String.firstSection() = "/${substring(1).substringBefore("/")}"

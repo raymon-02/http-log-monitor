@@ -7,12 +7,12 @@ import io.monitor.log.http.model.HostHistory
 import io.monitor.log.http.model.HttpEvent
 import io.monitor.log.http.model.TopHost
 import io.monitor.log.http.util.pollLastInclusive
+import io.monitor.log.http.util.toFullFormat
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.event.ApplicationStartedEvent
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
-import java.time.LocalDateTime
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
 @Service
 class StatisticService(
     @Value("\${monitor.events.statistic.period:$DEFAULT_STATISTIC_PERIOD}")
-    val period: Long
+    private val period: Long
 ) {
     companion object {
         private val log = LoggerFactory.getLogger(StatisticService::class.java)
@@ -32,19 +32,19 @@ class StatisticService(
     private val statisticScheduler = Executors.newSingleThreadScheduledExecutor { Thread(it, STATISTIC_THREAD) }
 
     private var totalEvents = 0L
-    private var firstEventTimestamp: LocalDateTime? = null
+    private var firstEventTimestamp: String? = null
 
     private val buffer = ConcurrentLinkedDeque<HttpEvent>()
     private val history = mutableMapOf<String, HostHistory>()
 
 
-    fun addHttpEvent(httpEvent: HttpEvent) {
-        buffer.addLast(httpEvent)
-    }
-
     @EventListener(ApplicationStartedEvent::class)
     fun scheduleStatisticCollection() {
         statisticScheduler.scheduleAtFixedRate({ collectStatistic() }, period, period, TimeUnit.SECONDS)
+    }
+
+    fun addHttpEvent(httpEvent: HttpEvent) {
+        buffer.addLast(httpEvent)
     }
 
     private fun collectStatistic() {
@@ -80,8 +80,8 @@ class StatisticService(
 
     private fun updateCommonStatistic(events: List<HttpEvent>) {
         totalEvents += events.size
-        if (firstEventTimestamp == null) {
-            firstEventTimestamp = events.takeIf { it.isNotEmpty() }?.first()?.timestamp
+        if (firstEventTimestamp == null && events.isNotEmpty()) {
+            firstEventTimestamp = events.first().timestamp.toFullFormat()
         }
     }
 

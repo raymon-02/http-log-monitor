@@ -4,3 +4,5 @@ monitor:
   events:
     statistic:
       period: 5
+    alert:
+      threshold: 1 # req/sec

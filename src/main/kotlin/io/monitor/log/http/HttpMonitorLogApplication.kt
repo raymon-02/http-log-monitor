@@ -1,6 +1,8 @@
 package io.monitor.log.http
 
-import io.monitor.log.http.common.DefaultArgs
+import io.monitor.log.http.common.DefaultArgs.DEFAULT_ALERT_THRESHOLD
+import io.monitor.log.http.common.DefaultArgs.DEFAULT_FILE
+import io.monitor.log.http.common.DefaultArgs.DEFAULT_STATISTIC_PERIOD
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -13,11 +15,14 @@ import org.springframework.context.event.EventListener
 
 @SpringBootApplication
 class HttpMonitorLogApplication(
-    @Value("\${monitor.log.file.name:${DefaultArgs.DEFAULT_FILE}}")
+    @Value("\${monitor.log.file.name:$DEFAULT_FILE}")
     private val logFileName: String,
 
-    @Value("\${monitor.events.statistic.period:${DefaultArgs.DEFAULT_STATISTIC_PERIOD}}")
-    val statisticPeriod: Long
+    @Value("\${monitor.events.statistic.period:$DEFAULT_STATISTIC_PERIOD}")
+    private val statisticPeriod: Long,
+
+    @Value("\${monitor.events.alert.threshold:$DEFAULT_ALERT_THRESHOLD}")
+    private val alertThreshold: Int
 ) {
 
     companion object {
@@ -32,7 +37,7 @@ class HttpMonitorLogApplication(
             append("Application is starting with args:").append("\n")
             append("    Log file name              = $logFileName").append("\n")
             append("    Statistic period (seconds) = $statisticPeriod").append("\n")
-            append("    Alert threshold (req/sec)  = ????????")
+            append("    Alert threshold (req/sec)  = $alertThreshold")
         }
         log.info(args)
     }

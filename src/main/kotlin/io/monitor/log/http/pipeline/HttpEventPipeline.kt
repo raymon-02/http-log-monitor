@@ -33,6 +33,6 @@ class HttpEventPipeline(
             .subscribe { statisticService.addHttpEvent(it) }
 
         httpEventStream
-            .subscribe() { alertService.addHttpEvent(it) }
+            .subscribe { alertService.addHttpEvent(it) }
     }
 }
