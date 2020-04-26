@@ -1,6 +1,7 @@
 package io.monitor.log.http.service
 
 import io.monitor.log.http.common.DefaultArgs.DEFAULT_STATISTIC_PERIOD
+import io.monitor.log.http.config.ApplicationStreamStartedEvent
 import io.monitor.log.http.model.Delta
 import io.monitor.log.http.model.HostDelta
 import io.monitor.log.http.model.HostHistory
@@ -10,7 +11,6 @@ import io.monitor.log.http.util.pollLastInclusive
 import io.monitor.log.http.util.toFullFormat
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.context.event.ApplicationStartedEvent
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentLinkedDeque
@@ -38,12 +38,14 @@ class StatisticService(
     private val history = mutableMapOf<String, HostHistory>()
 
 
-    @EventListener(ApplicationStartedEvent::class)
+    @EventListener(ApplicationStreamStartedEvent::class)
     fun scheduleStatisticCollection() {
         statisticScheduler.scheduleAtFixedRate({ collectStatistic() }, period, period, TimeUnit.SECONDS)
+        log.info("Statistic scheduler is started")
     }
 
     fun addHttpEvent(httpEvent: HttpEvent) {
+        log.debug("Statistic add event: $httpEvent")
         buffer.addLast(httpEvent)
     }
 
@@ -55,28 +57,6 @@ class StatisticService(
 
         log.info(createStatisticLog(delta, topHost))
     }
-
-    private fun createStatisticLog(delta: Delta, topHost: TopHost?) =
-        buildString {
-            append("\n")
-            append("Statistic:").append("\n")
-            append("  | Total requests: $totalEvents").append("\n")
-            append("  |     since $firstEventTimestamp").append("\n")
-            append("  | + ${delta.count} requests for the last $period sec").append("\n")
-            delta.hostDelta.forEach { (host, hostDelta) ->
-                append("  |    + ${hostDelta.count} : $host").append("\n")
-            }
-            if (topHost != null) {
-                append("  | Top host:").append("\n")
-                append("  |   host     = ${topHost.host}").append("\n")
-                append("  |   requests = ${topHost.hits}").append("\n")
-                append("  |   sections = [").append("\n")
-                topHost.sections.forEach {
-                    append("  |     $it").append("\n")
-                }
-                append("  |   ]")
-            }
-        }
 
     private fun updateCommonStatistic(events: List<HttpEvent>) {
         totalEvents += events.size
@@ -112,4 +92,26 @@ class StatisticService(
             TopHost(host, hostHistory.hits, hostHistory.sections)
         }
     }
+
+    private fun createStatisticLog(delta: Delta, topHost: TopHost?) =
+        buildString {
+            append("\n")
+            append("Statistic:").append("\n")
+            append("  | Total requests: $totalEvents").append("\n")
+            append("  |     since ${firstEventTimestamp ?: "'NO DATE'"}").append("\n")
+            append("  | + ${delta.count} requests for the last $period sec").append("\n")
+            delta.hostDelta.forEach { (host, hostDelta) ->
+                append("  |    + ${hostDelta.count} : $host").append("\n")
+            }
+            if (topHost != null) {
+                append("  | Top host:").append("\n")
+                append("  |   host     = ${topHost.host}").append("\n")
+                append("  |   requests = ${topHost.hits}").append("\n")
+                append("  |   sections = [").append("\n")
+                topHost.sections.forEach {
+                    append("  |     $it").append("\n")
+                }
+                append("  |   ]")
+            }
+        }
 }

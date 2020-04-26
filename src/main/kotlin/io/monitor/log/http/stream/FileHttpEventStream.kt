@@ -1,12 +1,14 @@
 package io.monitor.log.http.stream
 
 import io.monitor.log.http.common.DefaultArgs.DEFAULT_FILE
+import io.monitor.log.http.config.ApplicationStreamStartedEvent
 import io.monitor.log.http.model.HttpEvent
 import io.monitor.log.http.parser.HttpEventParser
 import io.monitor.log.http.util.parkMillisCurrentThread
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.event.ApplicationStartedEvent
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import reactor.core.publisher.ReplayProcessor
@@ -18,7 +20,8 @@ import java.util.concurrent.Executors
 class FileHttpEventStream(
     @Value("\${monitor.log.file.name:$DEFAULT_FILE}")
     private val fileName: String,
-    private val httpEventParser: HttpEventParser
+    private val httpEventParser: HttpEventParser,
+    private val eventPublisher: ApplicationEventPublisher
 ) : HttpEventStream {
 
     companion object {
@@ -37,13 +40,19 @@ class FileHttpEventStream(
     @EventListener(ApplicationStartedEvent::class)
     fun init() {
         eventExecutor.execute {
+            log.info("File reader is starting")
             File(fileName).bufferedReader().use { stream ->
+                log.info("File reader is started")
+                eventPublisher.publishEvent(ApplicationStreamStartedEvent(eventPublisher))
                 while (readEvents) {
-                    stream.readLine()
-                        ?.takeIf { it.isNotBlank() }
-                        ?.let { httpEventParser.parseHttpEvent(it) }
-                        ?.also { events.onNext(it) }
-                        ?: parkMillisCurrentThread()
+                    val line = stream.readLine()
+                    if (line == null) {
+                        parkMillisCurrentThread()
+                    } else {
+                        line.takeIf { it.isNotBlank() }
+                            ?.let { httpEventParser.parseHttpEvent(it) }
+                            ?.also { events.onNext(it) }
+                    }
                 }
             }
         }

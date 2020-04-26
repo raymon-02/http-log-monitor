@@ -22,6 +22,7 @@ class HttpEventParser {
     }
 
     fun parseHttpEvent(content: String): HttpEvent? {
+        log.debug("Parsing event from: $content")
         val matchResult = EVENT_REGEX.matchEntire(content)
         return if (matchResult != null) {
             HttpEvent(

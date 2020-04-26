@@ -1,7 +1,5 @@
 package io.monitor.log.http.model
 
-import io.monitor.log.http.util.before
-import io.monitor.log.http.util.equalOrAfter
 import java.time.ZonedDateTime
 
 data class HttpEvent(
@@ -10,5 +8,5 @@ data class HttpEvent(
     val timestamp: ZonedDateTime
 )
 
-fun HttpEvent?.since(timestamp: ZonedDateTime) = this != null && this.timestamp.equalOrAfter(timestamp)
-fun HttpEvent?.before(timestamp: ZonedDateTime) = this != null && this.timestamp.before(timestamp)
+fun HttpEvent?.before(timestamp: ZonedDateTime) = this != null && this.timestamp.isBefore(timestamp)
+fun HttpEvent?.after(timestamp: ZonedDateTime) = this != null && this.timestamp.isAfter(timestamp)

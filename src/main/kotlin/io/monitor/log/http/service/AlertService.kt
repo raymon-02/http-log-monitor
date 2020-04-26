@@ -1,24 +1,23 @@
 package io.monitor.log.http.service
 
 import io.monitor.log.http.common.DefaultArgs.DEFAULT_ALERT_THRESHOLD
+import io.monitor.log.http.common.TimeMeasure.SECONDS_IN_MINUTE
+import io.monitor.log.http.config.ApplicationStreamStartedEvent
 import io.monitor.log.http.model.HttpEvent
+import io.monitor.log.http.model.after
 import io.monitor.log.http.model.before
-import io.monitor.log.http.model.since
 import io.monitor.log.http.util.parkCurrentThread
 import io.monitor.log.http.util.parkMillisCurrentThread
 import io.monitor.log.http.util.toFullFormat
 import io.monitor.log.http.util.unparkThread
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.context.event.ApplicationStartedEvent
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.time.ZonedDateTime
 import java.util.ArrayDeque
 import java.util.Deque
 import java.util.concurrent.ConcurrentLinkedDeque
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 
 
 @Service
@@ -31,9 +30,7 @@ class AlertService(
         private val log = LoggerFactory.getLogger(AlertService::class.java)
 
         private const val ALERT_THREAD = "alert-thread"
-        private const val WAKEUP_THREAD = "wakeup-thread"
-        private const val WINDOW_TIME = 25L
-//        private const val WINDOW_TIME = 2 * SECONDS_IN_MINUTE
+        private const val WINDOW_TIME = 2 * SECONDS_IN_MINUTE
     }
 
     @Volatile
@@ -44,18 +41,15 @@ class AlertService(
     private val buffer: Deque<HttpEvent> = ConcurrentLinkedDeque()
     private val timeWindow: Deque<HttpEvent> = ArrayDeque(WINDOW_TIME.toInt() * threshold)
 
-    @Volatile
-    private var wakeup = false
-    private val wakeUpExecutor = Executors.newSingleThreadScheduledExecutor { Thread(it, WAKEUP_THREAD) }
 
-
-    @EventListener(ApplicationStartedEvent::class)
+    @EventListener(ApplicationStreamStartedEvent::class)
     fun startHttpEventHandling() {
         alertThread.start()
+        log.info("Alert monitor is started")
     }
 
     fun addHttpEvent(httpEvent: HttpEvent) {
-//        log.info("Alert: $httpEvent")
+        log.debug("Alert monitor add event: $httpEvent")
         buffer.addLast(httpEvent)
         unparkThread(alertThread)
     }
@@ -63,31 +57,27 @@ class AlertService(
 
     private fun handleHttpEvents() {
         while (handleEvents) {
-            log.info("WINDOWSTART: $timeWindow")
             var head = buffer.peekFirst()
             while (head == null) {
                 parkCurrentThread()
                 head = buffer.peekFirst()
             }
 
-            log.info("NEWEVENT")
-
-            var start = head.timestamp
-            var end = start.plusSeconds(WINDOW_TIME)
-            log.info("POLLHEAD: $end")
-            buffer.pollHeadBefore(end)
-
-            log.info("WINDOW: $timeWindow")
+            var end = head.timestamp
+            var start = end.minusWindowTime()
+            logTimeWindow(start, end)
+            buffer.pollBefore(end)
 
             while (timeWindow.isNotEmpty()) {
-                start = start.plusSeconds(1)
-                end = start.plusSeconds(WINDOW_TIME)
+                alertAction(end)
+
+                end = end.plusSeconds(1)
+                start = end.minusWindowTime()
+                logTimeWindow(start, end)
                 timeWindow.removeBefore(start)
                 buffer.pollBefore(end)
-                alertAction(end)
             }
-
-            alertAction(end) //TODO: need?
+            alertAction(end)
         }
     }
 
@@ -98,42 +88,12 @@ class AlertService(
                 parkMillisCurrentThread()
             }
             event = peekFirst()
-            if (event == null || event.since(timestamp)) {
+            if (event == null || event.after(timestamp)) {
                 break
             }
 
             removeFirst()
             timeWindow.addLast(event)
-        }
-    }
-
-    private fun Deque<HttpEvent>.pollHeadBefore(timestamp: ZonedDateTime) {
-        while (true) {
-            var event = peekFirst()
-            if (event == null) {
-                wakeup = false
-                val wakeUpExecutor = Executors.newSingleThreadScheduledExecutor { Thread(it, WAKEUP_THREAD) }
-                wakeUpExecutor.schedule({ wakeup() }, WINDOW_TIME, TimeUnit.SECONDS)
-                log.info("SCHEDULE")
-                while (event == null && !wakeup) {
-                    log.info("PARK WAKEUP")
-                    parkCurrentThread()
-                    log.info("UNPARK WAKEUP")
-                    event = peekFirst()
-                }
-                wakeUpExecutor.shutdownNow()
-                log.info("LEAVE LOOP")
-            }
-
-            if (event == null || event.since(timestamp)) {
-                log.info("BREAK")
-                break
-            }
-
-            log.info("ADD NEW")
-            removeFirst()
-            timeWindow.addLast(event)
-            alertAction(event.timestamp)
         }
     }
 
@@ -144,6 +104,8 @@ class AlertService(
             event = peekFirst()
         }
     }
+
+    private fun ZonedDateTime.minusWindowTime() = minusSeconds(WINDOW_TIME - 1)
 
     private fun alertAction(timestamp: ZonedDateTime) {
         val newAlert = timeWindow.size > WINDOW_TIME * threshold
@@ -156,9 +118,7 @@ class AlertService(
         alert = newAlert
     }
 
-    private fun wakeup() {
-        log.info("!!!WAKEUP!!!")
-        wakeup = true
-        unparkThread(alertThread)
+    fun logTimeWindow(start: ZonedDateTime, end: ZonedDateTime) {
+        log.debug("Time window: ${start.toFullFormat()} -- ${end.toFullFormat()}")
     }
 }
