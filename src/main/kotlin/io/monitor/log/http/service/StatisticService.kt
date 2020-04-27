@@ -6,7 +6,10 @@ import io.monitor.log.http.model.Delta
 import io.monitor.log.http.model.HostDelta
 import io.monitor.log.http.model.HostHistory
 import io.monitor.log.http.model.HttpEvent
+import io.monitor.log.http.model.Message
+import io.monitor.log.http.model.Priority
 import io.monitor.log.http.model.TopHost
+import io.monitor.log.http.stream.MessageStream
 import io.monitor.log.http.util.pollLastInclusive
 import io.monitor.log.http.util.toFullFormat
 import org.slf4j.LoggerFactory
@@ -21,7 +24,8 @@ import java.util.concurrent.TimeUnit
 @Service
 class StatisticService(
     @Value("\${monitor.events.statistic.period:$DEFAULT_STATISTIC_PERIOD}")
-    private val period: Long
+    private val period: Long,
+    private val messageStream: MessageStream
 ) {
     companion object {
         private val log = LoggerFactory.getLogger(StatisticService::class.java)
@@ -55,7 +59,12 @@ class StatisticService(
         val delta = getDelta(newEvents)
         val topHost = updateHistoryAndGetTopHost(delta)
 
-        log.info(createStatisticLog(delta, topHost))
+        messageStream.addMessage(
+            Message(
+                createStatisticLog(delta, topHost),
+                Priority.INFO
+            )
+        )
     }
 
     private fun updateCommonStatistic(events: List<HttpEvent>) {

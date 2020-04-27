@@ -10,13 +10,14 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.event.ApplicationStartedEvent
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.event.EventListener
-import org.springframework.stereotype.Service
+import org.springframework.stereotype.Component
 import reactor.core.publisher.ReplayProcessor
+import java.io.BufferedReader
 import java.io.File
 import java.util.concurrent.Executors
 
 
-@Service
+@Component
 class FileHttpEventStream(
     @Value("\${monitor.log.file.name:$DEFAULT_FILE}")
     private val fileName: String,
@@ -41,19 +42,29 @@ class FileHttpEventStream(
     fun init() {
         eventExecutor.execute {
             log.info("File reader is starting")
-            File(fileName).bufferedReader().use { stream ->
+            File(fileName).bufferedReader().use { reader ->
                 log.info("File reader is started")
-                eventPublisher.publishEvent(ApplicationStreamStartedEvent(eventPublisher))
-                while (readEvents) {
-                    val line = stream.readLine()
-                    if (line == null) {
-                        parkMillisCurrentThread()
-                    } else {
-                        line.takeIf { it.isNotBlank() }
-                            ?.let { httpEventParser.parseHttpEvent(it) }
-                            ?.also { events.onNext(it) }
-                    }
-                }
+                startStream()
+                reader.readEvents()
+            }
+        }
+    }
+
+    private fun startStream() {
+        Executors.newSingleThreadExecutor().execute {
+            eventPublisher.publishEvent(ApplicationStreamStartedEvent(eventPublisher))
+        }
+    }
+
+    private fun BufferedReader.readEvents() {
+        while (readEvents) {
+            val line = readLine()
+            if (line == null) {
+                parkMillisCurrentThread()
+            } else {
+                line.takeIf { it.isNotBlank() }
+                    ?.let { httpEventParser.parseHttpEvent(it) }
+                    ?.also { events.onNext(it) }
             }
         }
     }

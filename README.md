@@ -9,12 +9,13 @@ The solution gets http events from local file and print statistic with alerts to
 framework with reactive pipelines 
 and can be converted to micro-service providing API for submitting http events reactively.
 
-To provide your own http event source `HttpEventStream` interface should be implemented and added to Spring context
+To provide custom http event source `HttpEventStream` interface should be implemented and added to Spring context
 (current `HttpEventStream` implementation  should be excluded from Spring context).
 
 Monitoring implementations use low-level Java thread API to avoid blocking
 between reading/writing events from/to reactive pipelines
-and keep threads in _park_ state when no events were read from stream.
+and keep threads in _park_ state when no events were read from stream
+with immediate _unpark_ on new event.
 
 ### Events
 If default event stream implementation from local file is used then file content must have specific format.
@@ -106,4 +107,6 @@ To override default property values additional arguments can be specified during
 * JMX/REST API to start/stop/restart event handling
 * API for http event streaming from outside system (via WebSocket)
 * Chart for statistic with alerts visualisation
-* Detect and handle abnormal events that don't suite current timeline (e.g. events that already happened or events with future time) 
+* Detect and handle abnormal events that don't suite current timeline (e.g. events that already happened or events with future time)
+* User arguments validation
+* Unit and integration tests on all components

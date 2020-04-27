@@ -6,3 +6,4 @@ monitor:
       period: 10
     alert:
       threshold: 10 # req/sec
+      window: 120

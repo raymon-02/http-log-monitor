@@ -1,11 +1,14 @@
 package io.monitor.log.http.service
 
 import io.monitor.log.http.common.DefaultArgs.DEFAULT_ALERT_THRESHOLD
-import io.monitor.log.http.common.TimeMeasure.SECONDS_IN_MINUTE
+import io.monitor.log.http.common.DefaultArgs.DEFAULT_WINDOW_TIME
 import io.monitor.log.http.config.ApplicationStreamStartedEvent
 import io.monitor.log.http.model.HttpEvent
+import io.monitor.log.http.model.Message
+import io.monitor.log.http.model.Priority
 import io.monitor.log.http.model.after
 import io.monitor.log.http.model.before
+import io.monitor.log.http.stream.MessageStream
 import io.monitor.log.http.util.parkCurrentThread
 import io.monitor.log.http.util.parkMillisCurrentThread
 import io.monitor.log.http.util.toFullFormat
@@ -18,28 +21,33 @@ import java.time.ZonedDateTime
 import java.util.ArrayDeque
 import java.util.Deque
 import java.util.concurrent.ConcurrentLinkedDeque
+import kotlin.concurrent.thread
 
 
 @Service
 class AlertService(
     @Value("\${monitor.events.alert.threshold:$DEFAULT_ALERT_THRESHOLD}")
-    private val threshold: Int
+    private val threshold: Int,
+
+    @Value("\${monitor.events.alert.window:$DEFAULT_WINDOW_TIME}")
+    private val windowTime: Long,
+
+    private val messageStream: MessageStream
 ) {
 
     companion object {
         private val log = LoggerFactory.getLogger(AlertService::class.java)
 
         private const val ALERT_THREAD = "alert-thread"
-        private const val WINDOW_TIME = 2 * SECONDS_IN_MINUTE
     }
 
     @Volatile
     private var handleEvents = true
-    private val alertThread = Thread({ handleHttpEvents() }, ALERT_THREAD)
+    private val alertThread = thread(start = false, name = ALERT_THREAD) { handleHttpEvents() }
 
     private var alert = false
     private val buffer: Deque<HttpEvent> = ConcurrentLinkedDeque()
-    private val timeWindow: Deque<HttpEvent> = ArrayDeque(WINDOW_TIME.toInt() * threshold)
+    private val timeWindow: Deque<HttpEvent> = ArrayDeque(windowTime.toInt() * threshold)
 
 
     @EventListener(ApplicationStreamStartedEvent::class)
@@ -57,13 +65,13 @@ class AlertService(
 
     private fun handleHttpEvents() {
         while (handleEvents) {
-            var head = buffer.peekFirst()
-            while (head == null) {
+            var event = buffer.peekFirst()
+            while (event == null) {
                 parkCurrentThread()
-                head = buffer.peekFirst()
+                event = buffer.peekFirst()
             }
 
-            var end = head.timestamp
+            var end = event.timestamp
             var start = end.minusWindowTime()
             logTimeWindow(start, end)
             buffer.pollBefore(end)
@@ -105,20 +113,30 @@ class AlertService(
         }
     }
 
-    private fun ZonedDateTime.minusWindowTime() = minusSeconds(WINDOW_TIME - 1)
+    private fun ZonedDateTime.minusWindowTime() = minusSeconds(windowTime - 1)
 
     private fun alertAction(timestamp: ZonedDateTime) {
-        val newAlert = timeWindow.size > WINDOW_TIME * threshold
+        val newAlert = timeWindow.size > windowTime * threshold
         if (!alert && newAlert) {
-            log.warn("High traffic generated alert - hits = ${timeWindow.size}, triggered at ${timestamp.toFullFormat()}")
+            messageStream.addMessage(
+                Message(
+                    "High traffic generated alert - hits = ${timeWindow.size}, triggered at ${timestamp.toFullFormat()}",
+                    Priority.WARN
+                )
+            )
         }
         if (alert && !newAlert) {
-            log.info("High traffic recovered - hits = ${timeWindow.size}, triggered at ${timestamp.toFullFormat()}")
+            messageStream.addMessage(
+                Message(
+                    "High traffic recovered - hits = ${timeWindow.size}, triggered at ${timestamp.toFullFormat()}",
+                    Priority.INFO
+                )
+            )
         }
         alert = newAlert
     }
 
-    fun logTimeWindow(start: ZonedDateTime, end: ZonedDateTime) {
+    private fun logTimeWindow(start: ZonedDateTime, end: ZonedDateTime) {
         log.debug("Time window: ${start.toFullFormat()} -- ${end.toFullFormat()}")
     }
 }

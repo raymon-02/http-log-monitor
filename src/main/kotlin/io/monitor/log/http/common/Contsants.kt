@@ -4,6 +4,7 @@ object DefaultArgs {
     const val DEFAULT_FILE = "/tmp/access.log"
     const val DEFAULT_STATISTIC_PERIOD = 10
     const val DEFAULT_ALERT_THRESHOLD = 10
+    const val DEFAULT_WINDOW_TIME = 120
 }
 
 object TimeMeasure {
