@@ -118,6 +118,7 @@ class AlertService(
     private fun alertAction(timestamp: ZonedDateTime) {
         val newAlert = timeWindow.size > windowTime * threshold
         if (!alert && newAlert) {
+            log.debug("ALERT: ${timeWindow.size}")
             messageStream.addMessage(
                 Message(
                     "High traffic generated alert - hits = ${timeWindow.size}, triggered at ${timestamp.toFullFormat()}",
@@ -126,6 +127,7 @@ class AlertService(
             )
         }
         if (alert && !newAlert) {
+            log.debug("DOWN ALERT: ${timeWindow.size}")
             messageStream.addMessage(
                 Message(
                     "High traffic recovered - hits = ${timeWindow.size}, triggered at ${timestamp.toFullFormat()}",
@@ -137,6 +139,6 @@ class AlertService(
     }
 
     private fun logTimeWindow(start: ZonedDateTime, end: ZonedDateTime) {
-        log.debug("Time window: ${start.toFullFormat()} -- ${end.toFullFormat()}")
+        log.debug("Time window: ${start.toFullFormat()} -- ${end.toFullFormat()}  size=${timeWindow.size}")
     }
 }

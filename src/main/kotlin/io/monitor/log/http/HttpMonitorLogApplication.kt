@@ -11,8 +11,6 @@ import org.springframework.context.event.ContextRefreshedEvent
 import org.springframework.context.event.EventListener
 
 
-//TODO: debug logging in all classes
-
 @SpringBootApplication
 class HttpMonitorLogApplication(
     @Value("\${monitor.log.file.name:$DEFAULT_FILE}")
@@ -30,8 +28,7 @@ class HttpMonitorLogApplication(
     }
 
     @EventListener(ContextRefreshedEvent::class)
-    fun logArgs(
-    ) {
+    fun logArgs() {
         val args = buildString {
             append("\n")
             append("Application is starting with args:").append("\n")
